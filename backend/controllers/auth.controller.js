@@ -1,4 +1,5 @@
 import User from "../models/user.model.js";
+import jwt from "jsonwebtoken";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
@@ -64,7 +65,7 @@ export const signup = asyncHandler(async (req, res) => {
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(createdUser._id);
-    storeRefreshToken(createdUser._id, refreshToken);
+    await storeRefreshToken(createdUser._id, refreshToken);
 
     setCookies(res, accessToken, refreshToken);
 
@@ -100,14 +101,14 @@ export const login = asyncHandler(async (req, res) => {
     delete loggedInUser.password;
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id);
-    storeRefreshToken(loggedInUser._id, refreshToken);
+    await storeRefreshToken(loggedInUser._id, refreshToken);
 
     setCookies(res, accessToken, refreshToken);
 
     return res
-    .status(201)
+    .status(200)
     .json(
-        new ApiResponse(201, loggedInUser, "User logged in successfully!")
+        new ApiResponse(200, loggedInUser, "User logged in successfully!")
     )
 });
 
@@ -125,4 +126,50 @@ export const logout = asyncHandler(async (req, res) => {
     .json(
         new ApiResponse(200, {}, "User logged out successfully!")
     )
+});
+
+export const refreshAccessToken = asyncHandler(async (req, res) => {
+    const incomingRefreshToken = req.cookies?.refreshToken || req.body?.refreshToken;
+
+    if (!incomingRefreshToken) {
+        throw new ApiError(401, "Unauthorized request - No refresh token provided");
+    }
+
+    let decodedToken;
+    
+    try {
+        decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+    } catch (error) {
+        throw new ApiError(401, "Unauthorized - Expired or invalid refresh token");
+    }
+
+    const storedToken = await redis.get(`refresh_token:${decodedToken._id}`);
+
+    if (storedToken !== incomingRefreshToken) {
+        throw new ApiError(401, "Invalid or reused refresh token!");
+    }
+
+    const accessToken = jwt.sign(
+        { 
+            _id: decodedToken._id 
+        },
+        process.env.ACCESS_TOKEN_SECRET,
+        { 
+            expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "15m" 
+        }
+    );
+
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 15 * 60 * 1000,
+    };
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .json(
+        new ApiResponse(200, { accessToken }, "Access token refreshed successfully!")
+    );
 });

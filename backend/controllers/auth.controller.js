@@ -136,7 +136,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 
     let decodedToken;
-    
+
     try {
         decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
     } catch (error) {
@@ -171,5 +171,13 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     .cookie("accessToken", accessToken, options)
     .json(
         new ApiResponse(200, { accessToken }, "Access token refreshed successfully!")
+    );
+});
+
+export const getProfile = asyncHandler(async (req, res) => {
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, req.user, "User details fetched successfully!")
     );
 });

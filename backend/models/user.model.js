@@ -35,9 +35,6 @@ const userSchema = new Schema({
         type: String,
         enum: ["customer", "admin"],
         default: "customer"
-    },
-    refreshToken: {
-        type: String
     }
 }, { timestamps: true });
 
@@ -57,8 +54,7 @@ userSchema.methods.generateAccessToken = function () {
         {
             _id: this._id,
             email: this.email,
-            username: this.username,
-            fullname: this.fullName
+            name: this.name
         },
         process.env.ACCESS_TOKEN_SECRET,
         {

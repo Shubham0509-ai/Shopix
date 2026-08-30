@@ -2,6 +2,7 @@ import User from "../models/user.model.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { redis } from "../lib/redis.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -9,13 +10,14 @@ const generateAccessAndRefreshTokens = async (userId) => {
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
 
-        user.refreshToken = refreshToken
-        await user.save({ validateBeforeSave: false })
-
         return { accessToken, refreshToken }
     } catch (error) {
         throw new ApiError(500, "Something went wrong while generating refresh and access token")
     }
+};
+
+const storeRefreshToken = async(userId, refreshToken) => {
+    await redis.set(`refresh_token:${userId}`, refreshToken, "EX", 7 * 24 * 60 * 60); // 7 days
 };
 
 const setCookies = (res, accessToken, refreshToken) => {
@@ -55,13 +57,14 @@ export const signup = asyncHandler(async (req, res) => {
         password
     });
 
-    const createdUser = await User.findById(user._id).select("-password -refreshToken");
+    const createdUser = await User.findById(user._id).select("-password");
 
     if (!createdUser) {
         throw new ApiError(500, "Something went wrong while signing up the user")
     }
 
-    const { accessToken, refreshToken } = generateAccessAndRefreshTokens(createdUser._id);
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(createdUser._id);
+    storeRefreshToken(createdUser._id, refreshToken);
 
     setCookies(res, accessToken, refreshToken);
 
@@ -73,7 +76,11 @@ export const signup = asyncHandler(async (req, res) => {
 });
 
 export const login = async (req, res) => {
-    res.send("Login end point");
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        throw new ApiError(400, "User credentials are required!")
+    }
 };
 
 export const logout = async (req, res) => {

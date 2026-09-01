@@ -75,3 +75,101 @@ export const createProduct = asyncHandler(async (req, res) => {
         new ApiResponse(201, product, "Product created successfully!")
     )
 });
+
+export const deleteProduct = asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+        throw new ApiError(404, "No product found!")
+    }
+
+    if (product.image) {
+        const publicId = product.image.split("/").pop().split(".")[0];
+
+        try {
+            await cloudinary.uploader.destroy(`products/${publicId}`);
+            console.log("Image deleted from cloudinary successfully!");
+        } catch (error) {
+            console.log("Error deleting image from cloudinary:", error?.message);
+        }
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+
+    if (product.isFeatured) {
+        await updateFeaturedProductsCache();
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, {}, "Product deleted successfully!")
+    )
+});
+
+export const getRecommendedProducts = asyncHandler(async (req, res) => {
+    const products = await Product.aggregate([
+        {
+            $sample: {
+                size: 4
+            }
+        },
+        {
+            $project: {
+                _id: 1,
+                name: 1,
+                description: 1,
+                image: 1,
+                price: 1
+            }
+        }
+    ]);
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, products, "Recommended products fetched successfully!")
+    )
+});
+
+export const getProductsByCategory = asyncHandler(async (req, res) => {
+    const { category } = req.params;
+
+    const products = await Product.find({ category });
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, products, "Products fetched by category!")
+    )
+});
+
+export const toggleFeaturedProduct = asyncHandler(async (req, res) => {
+    const product = await Product.findById(req.params.id);
+
+    if (!product) {
+        throw new ApiError(404, "Product not found!")
+    }
+
+    product.isFeatured = !product.isFeatured;
+
+    const updatedProduct = await product.save();
+
+    await updateFeaturedProductsCache();
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, updatedProduct, "Product updated successfully!")
+    )
+});
+
+async function updateFeaturedProductsCache() {
+    try {
+        const featuredProducts = await Product.find({ isFeatured: true }).lean();
+
+        await redis.set("featured_products", JSON.stringify(featuredProducts));
+    } catch (error) {
+        console.log("Error in update cache function!");
+    }
+};

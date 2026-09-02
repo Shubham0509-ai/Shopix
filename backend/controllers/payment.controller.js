@@ -86,7 +86,59 @@ export const createCheckoutSession = asyncHandler(async (req, res) => {
 });
 
 export const checkoutSuccess = asyncHandler(async (req, res) => {
+    const { sessionId } = req.body;
 
+    if (!sessionId) {
+        throw new ApiError(400, "No sessionId provided!")
+    }
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+    if (session.payment_status === "paid") {
+        if (session.metadata.couponCode) {
+            await Coupon.findOneAndUpdate(
+                {
+                    code: session.metadata.couponCode,
+                    userId: session.metadata.userId,
+                },
+                {
+                    isActive: false,
+                }
+            );
+        }
+
+        const existingOrder = await Order.findOne({ stripeSessionId: sessionId });
+
+        if (existingOrder) {
+            return res
+            .status(200)
+            .json(
+                new ApiResponse(200, { orderId: existingOrder._id }, "Order already processed")
+            )
+        }
+
+        const products = JSON.parse(session.metadata.products);
+
+        const newOrder = await Order.create({
+            user: session.metadata.userId,
+            products: products.map((product) => ({
+                product: product.id,
+                quantity: product.quantity,
+                price: product.price,
+            })),
+            totalAmount: session.amount_total / 100, // convert from cents to dollars,
+            stripeSessionId: sessionId,
+        });
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(200, { orderId: newOrder._id }, "Payment successful, order created, and coupon deactivated if used."
+            )
+        )
+    } else {
+        throw new ApiError(400, "Payment was not successful or is still pending!")
+    }
 });
 
 async function createStripeCoupon(discountPercentage) {
@@ -101,7 +153,7 @@ async function createStripeCoupon(discountPercentage) {
 async function createNewCoupon(userId) {
 	await Coupon.findOneAndDelete({ userId });
 
-	const newCoupon = await new Coupon.create({
+	const newCoupon = await Coupon.create({
 		code: "GIFT" + Math.random().toString(36).substring(2, 8).toUpperCase(),
 		discountPercentage: 10,
 		expirationDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now

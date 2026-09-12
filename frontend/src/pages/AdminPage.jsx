@@ -23,28 +23,36 @@ const AdminPage = () => {
 
 	return (
 		<div className='min-h-screen relative overflow-hidden'>
-			<div className='relative z-10 container mx-auto px-4 py-16'>
-				<motion.h1
-					className='text-4xl font-bold mb-8 text-emerald-400 text-center'
+			<div className='relative z-10 container mx-auto px-4 py-12'>
+				<motion.div
+					className='text-center mb-8'
 					initial={{ opacity: 0, y: -20 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.8 }}
 				>
-					Admin Dashboard
-				</motion.h1>
+					<span className='glow-pill mb-3 inline-flex text-xs font-semibold text-violet-300 uppercase tracking-widest'>
+						Management Suite
+					</span>
+					<h1 className='text-4xl font-black text-white tracking-tight'>
+						Admin <span className='gradient-text'>Dashboard</span>
+					</h1>
+					<p className='mt-2 text-sm text-slate-400'>
+						Manage products, inventory catalog, and real-time revenue analytics
+					</p>
+				</motion.div>
 
-				<div className='flex justify-center mb-8'>
+				<div className='flex flex-wrap justify-center gap-3 mb-10'>
 					{tabs.map((tab) => (
 						<button
 							key={tab.id}
 							onClick={() => setActiveTab(tab.id)}
-							className={`flex items-center px-4 py-2 mx-2 rounded-md transition-colors duration-200 ${
+							className={`flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer ${
 								activeTab === tab.id
-									? "bg-emerald-600 text-white"
-									: "bg-gray-700 text-gray-300 hover:bg-gray-600"
+									? "gradient-btn text-white shadow-lg shadow-violet-600/25"
+									: "glass-panel text-slate-400 hover:text-white hover:bg-white/10"
 							}`}
 						>
-							<tab.icon className='mr-2 h-5 w-5' />
+							<tab.icon className='mr-2 h-4 w-4' />
 							{tab.label}
 						</button>
 					))}

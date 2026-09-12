@@ -7,31 +7,42 @@ import { redis } from "../lib/redis.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
-        const user = await User.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new ApiError(404, "User not found for token generation");
+        }
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
 
-        return { accessToken, refreshToken }
+        return { accessToken, refreshToken };
     } catch (error) {
-        throw new ApiError(500, "Something went wrong while generating refresh and access token")
+        console.error("Token generation error:", error?.message);
+        throw new ApiError(500, error.message || "Something went wrong while generating refresh and access token");
     }
 };
 
-const storeRefreshToken = async(userId, refreshToken) => {
-    await redis.set(`refresh_token:${userId}`, refreshToken, "EX", 7 * 24 * 60 * 60); // 7 days
+const storeRefreshToken = async (userId, refreshToken) => {
+    try {
+        if (redis) {
+            await redis.set(`refresh_token:${userId}`, refreshToken, "EX", 7 * 24 * 60 * 60); // 7 days
+        }
+    } catch (error) {
+        console.warn("Warning: Redis storeRefreshToken error (proceeding with session):", error?.message);
+    }
 };
 
 const setCookies = (res, accessToken, refreshToken) => {
+	const isProd = process.env.NODE_ENV === "production";
 	res.cookie("accessToken", accessToken, {
-		httpOnly: true, // prevent XSS attacks, cross site scripting attack
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict", // prevents CSRF attack, cross-site request forgery attack
+		httpOnly: true,
+		secure: isProd,
+		sameSite: isProd ? "strict" : "lax",
 		maxAge: 15 * 60 * 1000, // 15 minutes
 	});
 	res.cookie("refreshToken", refreshToken, {
-		httpOnly: true, // prevent XSS attacks, cross site scripting attack
-		secure: process.env.NODE_ENV === "production",
-		sameSite: "strict", // prevents CSRF attack, cross-site request forgery attack
+		httpOnly: true,
+		secure: isProd,
+		sameSite: isProd ? "strict" : "lax",
 		maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 	});
 };
@@ -41,27 +52,32 @@ export const signup = asyncHandler(async (req, res) => {
     const { name, email, password } = req.body;
 
     if (
-        [name, email, password].some((field) => !field || field.trim() === "") // field? (Optional Chaining): Prevents crashes if field is null or undefined.
+        [name, email, password].some((field) => !field || field.trim() === "")
     ) {
-        throw new ApiError(400, "All fields are required")
+        throw new ApiError(400, "All fields are required");
     }
 
-    const existedUser = await User.findOne({ email });
+    if (password.length < 6) {
+        throw new ApiError(400, "Password must be at least 6 characters long");
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const existedUser = await User.findOne({ email: normalizedEmail });
 
     if (existedUser) {
-        throw new ApiError(400, "User with email already exists!")
+        throw new ApiError(400, "User with this email already exists!");
     }
 
     const user = await User.create({
-        name,
-        email,
+        name: name.trim(),
+        email: normalizedEmail,
         password
     });
 
     const createdUser = await User.findById(user._id).select("-password");
 
     if (!createdUser) {
-        throw new ApiError(500, "Something went wrong while signing up the user!")
+        throw new ApiError(500, "Something went wrong while signing up the user!");
     }
 
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(createdUser._id);
@@ -73,30 +89,29 @@ export const signup = asyncHandler(async (req, res) => {
     .status(201)
     .json(
         new ApiResponse(201, createdUser, "User signed up successfully!")
-    )
+    );
 });
 
 export const login = asyncHandler(async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        throw new ApiError(400, "User credentials are required!")
+        throw new ApiError(400, "User credentials are required!");
     }
 
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: normalizedEmail });
 
     if (!user) {
-        throw new ApiError(404, "User does not exist")
+        throw new ApiError(404, "User does not exist with this email");
     }
 
-    const isPasswordValid = await user.isPasswordCorrect(password)
+    const isPasswordValid = await user.isPasswordCorrect(password);
 
     if (!isPasswordValid) {
-        throw new ApiError(401, "Invalid user credentials")
+        throw new ApiError(401, "Invalid user credentials");
     }
 
-    // Optimization: Remove the password from the existing user object 
-    // instead of querying the database a second time.
     const loggedInUser = user.toObject();
     delete loggedInUser.password;
 
@@ -109,15 +124,21 @@ export const login = asyncHandler(async (req, res) => {
     .status(200)
     .json(
         new ApiResponse(200, loggedInUser, "User logged in successfully!")
-    )
+    );
 });
 
 export const logout = asyncHandler(async (req, res) => {
     if (!req.user?._id) {
-        throw new ApiError(401, "Unauthorized - User session not found")
+        throw new ApiError(401, "Unauthorized - User session not found");
     }
 
-    await redis.del(`refresh_token:${req.user._id}`);
+    try {
+        if (redis) {
+            await redis.del(`refresh_token:${req.user._id}`);
+        }
+    } catch (error) {
+        console.warn("Warning: Redis del refresh token error:", error?.message);
+    }
 
     return res
     .status(200)
@@ -125,7 +146,7 @@ export const logout = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken")
     .json(
         new ApiResponse(200, {}, "User logged out successfully!")
-    )
+    );
 });
 
 export const refreshAccessToken = asyncHandler(async (req, res) => {
@@ -138,14 +159,21 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
     let decodedToken;
 
     try {
-        decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET);
+        decodedToken = jwt.verify(incomingRefreshToken, process.env.REFRESH_TOKEN_SECRET || "fallback_refresh_token_secret_shopix");
     } catch (error) {
         throw new ApiError(401, "Unauthorized - Expired or invalid refresh token");
     }
 
-    const storedToken = await redis.get(`refresh_token:${decodedToken._id}`);
+    let storedToken = null;
+    try {
+        if (redis) {
+            storedToken = await redis.get(`refresh_token:${decodedToken._id}`);
+        }
+    } catch (error) {
+        console.warn("Warning: Redis get refresh token error:", error?.message);
+    }
 
-    if (storedToken !== incomingRefreshToken) {
+    if (storedToken && storedToken !== incomingRefreshToken) {
         throw new ApiError(401, "Invalid or reused refresh token!");
     }
 
@@ -153,7 +181,7 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
         { 
             _id: decodedToken._id 
         },
-        process.env.ACCESS_TOKEN_SECRET,
+        process.env.ACCESS_TOKEN_SECRET || "fallback_access_token_secret_shopix",
         { 
             expiresIn: process.env.ACCESS_TOKEN_EXPIRY || "15m" 
         }

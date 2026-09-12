@@ -1,5 +1,5 @@
 import { ShoppingCart, UserPlus, LogIn, LogOut, Lock } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useUserStore } from "../stores/useUserStore";
 import { useCartStore } from "../stores/useCartStore";
 
@@ -9,78 +9,79 @@ const Navbar = () => {
 	const { cart } = useCartStore();
 
 	return (
-		<header className='fixed top-0 left-0 w-full bg-gray-900 bg-opacity-90 backdrop-blur-md shadow-lg z-40 transition-all duration-300 border-b border-emerald-800'>
-			<div className='container mx-auto px-4 py-3'>
-				<div className='flex flex-wrap justify-between items-center'>
-					<Link to='/' className='text-2xl font-bold text-emerald-400 items-center space-x-2 flex'>
-						E-Commerce
+		<header className='fixed top-0 left-0 w-full z-50 px-4 sm:px-6 lg:px-8 py-3 transition-all duration-300'>
+			<div className='max-w-7xl mx-auto glass-panel rounded-2xl px-5 py-3 border border-white/10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]'>
+				<div className='flex justify-between items-center'>
+					<Link to='/' className='flex items-center space-x-2.5 group'>
+						<div className='w-9 h-9 rounded-xl bg-gradient-to-tr from-violet-600 to-cyan-400 flex items-center justify-center shadow-lg shadow-violet-500/25 group-hover:scale-105 transition-transform duration-300'>
+							<span className='text-white font-extrabold text-lg tracking-tight'>S</span>
+						</div>
+						<span className='text-2xl font-bold tracking-tight text-white group-hover:opacity-90 transition-opacity'>
+							Shop<span className='gradient-text font-black'>ix</span>
+						</span>
 					</Link>
 
-					<nav className='flex flex-wrap items-center gap-4'>
+					<nav className='flex items-center gap-3 sm:gap-4'>
 						<Link
 							to={"/"}
-							className='text-gray-300 hover:text-emerald-400 transition duration-300
-					 ease-in-out'
+							className='text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-white/5 transition-all duration-200'
 						>
 							Home
 						</Link>
+
 						{user && (
 							<Link
 								to={"/cart"}
-								className='relative group text-gray-300 hover:text-emerald-400 transition duration-300 
-							ease-in-out'
+								className='relative group flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 transition-all duration-200'
 							>
-								<ShoppingCart className='inline-block mr-1 group-hover:text-emerald-400' size={20} />
+								<ShoppingCart className='text-slate-400 group-hover:text-violet-400 transition-colors' size={19} />
 								<span className='hidden sm:inline'>Cart</span>
-								{cart.length > 0 && (
+								{cart?.length > 0 && (
 									<span
-										className='absolute -top-2 -left-2 bg-emerald-500 text-white rounded-full px-2 py-0.5 
-									text-xs group-hover:bg-emerald-400 transition duration-300 ease-in-out'
+										className='absolute -top-1.5 -right-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center
+									text-[11px] font-bold shadow-md shadow-violet-500/40 animate-pulse'
 									>
 										{cart.length}
 									</span>
 								)}
 							</Link>
 						)}
+
 						{isAdmin && (
 							<Link
-								className='bg-emerald-700 hover:bg-emerald-600 text-white px-3 py-1 rounded-md font-medium
-								 transition duration-300 ease-in-out flex items-center'
+								className='px-3.5 py-1.5 rounded-xl text-sm font-semibold text-violet-200 bg-violet-950/60 border border-violet-500/30 hover:border-violet-500/60 hover:bg-violet-900/40 shadow-sm shadow-violet-900/30 transition-all duration-200 flex items-center gap-1.5'
 								to={"/secret-dashboard"}
 							>
-								<Lock className='inline-block mr-1' size={18} />
+								<Lock size={15} className='text-violet-400' />
 								<span className='hidden sm:inline'>Dashboard</span>
 							</Link>
 						)}
 
 						{user ? (
 							<button
-								className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 
-						rounded-md flex items-center transition duration-300 ease-in-out'
+								className='px-3.5 py-1.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-2 transition-all duration-200'
 								onClick={logout}
 							>
-								<LogOut size={18} />
-								<span className='hidden sm:inline ml-2'>Log Out</span>
+								<LogOut size={16} className='text-slate-400' />
+								<span className='hidden sm:inline'>Log Out</span>
 							</button>
 						) : (
-							<>
-								<Link
-									to={"/signup"}
-									className='bg-emerald-600 hover:bg-emerald-700 text-white py-2 px-4 
-									rounded-md flex items-center transition duration-300 ease-in-out'
-								>
-									<UserPlus className='mr-2' size={18} />
-									Sign Up
-								</Link>
+							<div className='flex items-center gap-2'>
 								<Link
 									to={"/login"}
-									className='bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 
-									rounded-md flex items-center transition duration-300 ease-in-out'
+									className='px-3.5 py-1.5 rounded-xl text-sm font-medium text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 flex items-center gap-1.5 transition-all duration-200'
 								>
-									<LogIn className='mr-2' size={18} />
+									<LogIn size={15} />
 									Login
 								</Link>
-							</>
+								<Link
+									to={"/signup"}
+									className='gradient-btn text-white px-4 py-1.5 rounded-xl text-sm font-semibold flex items-center gap-1.5'
+								>
+									<UserPlus size={15} />
+									Sign Up
+								</Link>
+							</div>
 						)}
 					</nav>
 				</div>

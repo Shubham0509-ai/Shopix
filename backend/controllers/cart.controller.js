@@ -16,7 +16,7 @@ export const getCartProducts = asyncHandler(async (req, res) => {
 
     const cartItems = products.map((product) => {
         const item = user.cartItems.find((cartItem) => cartItem.product?.toString() === product._id?.toString());
-        return { ...product.toJSON(), quantity: item.quantity };
+        return { ...product.toJSON(), quantity: item ? item.quantity : 1 };
     });
 
     return res
@@ -29,6 +29,10 @@ export const getCartProducts = asyncHandler(async (req, res) => {
 export const addToCart = asyncHandler(async (req, res) => {
     const { productId } = req.body;
     const user = req.user;
+
+    if (!productId) {
+        throw new ApiError(400, "Product ID is required");
+    }
 
     const existingItem = user.cartItems.find((item) => item.product?.toString() === productId);
 

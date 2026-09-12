@@ -18,8 +18,13 @@ const AnalyticsTab = () => {
 		const fetchAnalyticsData = async () => {
 			try {
 				const response = await axios.get("/analytics");
-				setAnalyticsData(response.data.analyticsData);
-				setDailySalesData(response.data.dailySalesData);
+				const rawData = response.data?.data || response.data;
+				if (rawData?.analyticsData) {
+					setAnalyticsData(rawData.analyticsData);
+				}
+				if (Array.isArray(rawData?.dailySalesData)) {
+					setDailySalesData(rawData.dailySalesData);
+				}
 			} catch (error) {
 				console.error("Error fetching analytics data:", error);
 			} finally {
@@ -31,7 +36,7 @@ const AnalyticsTab = () => {
 	}, []);
 
 	if (isLoading) {
-		return <div>Loading...</div>;
+		return <div className='text-center text-violet-400 py-12 text-sm font-semibold animate-pulse'>Loading analytics dashboard...</div>;
 	}
 
 	return (
@@ -39,58 +44,75 @@ const AnalyticsTab = () => {
 			<div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8'>
 				<AnalyticsCard
 					title='Total Users'
-					value={analyticsData.users.toLocaleString()}
+					value={(analyticsData?.users ?? 0).toLocaleString()}
 					icon={Users}
-					color='from-emerald-500 to-teal-700'
+					badgeColor='text-violet-400'
+					gradient='bg-gradient-to-br from-violet-600/20 via-indigo-900/10 to-transparent'
 				/>
 				<AnalyticsCard
 					title='Total Products'
-					value={analyticsData.products.toLocaleString()}
+					value={(analyticsData?.products ?? 0).toLocaleString()}
 					icon={Package}
-					color='from-emerald-500 to-green-700'
+					badgeColor='text-indigo-400'
+					gradient='bg-gradient-to-br from-indigo-600/20 via-blue-900/10 to-transparent'
 				/>
 				<AnalyticsCard
-					title='Total Sales'
-					value={analyticsData.totalSales.toLocaleString()}
+					title='Total Orders'
+					value={(analyticsData?.totalSales ?? 0).toLocaleString()}
 					icon={ShoppingCart}
-					color='from-emerald-500 to-cyan-700'
+					badgeColor='text-cyan-400'
+					gradient='bg-gradient-to-br from-cyan-600/20 via-teal-900/10 to-transparent'
 				/>
 				<AnalyticsCard
 					title='Total Revenue'
-					value={`$${analyticsData.totalRevenue.toLocaleString()}`}
+					value={`$${(analyticsData?.totalRevenue ?? 0).toLocaleString()}`}
 					icon={DollarSign}
-					color='from-emerald-500 to-lime-700'
+					badgeColor='text-fuchsia-400'
+					gradient='bg-gradient-to-br from-fuchsia-600/20 via-rose-900/10 to-transparent'
 				/>
 			</div>
 			<motion.div
-				className='bg-gray-800/60 rounded-lg p-6 shadow-lg'
+				className='glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/40 border border-white/10'
 				initial={{ opacity: 0, y: 20 }}
 				animate={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.5, delay: 0.25 }}
 			>
+				<h3 className='text-lg font-bold text-white mb-6'>Sales & Revenue Trends</h3>
 				<ResponsiveContainer width='100%' height={400}>
 					<LineChart data={dailySalesData}>
-						<CartesianGrid strokeDasharray='3 3' />
-						<XAxis dataKey='name' stroke='#D1D5DB' />
-						<YAxis yAxisId='left' stroke='#D1D5DB' />
-						<YAxis yAxisId='right' orientation='right' stroke='#D1D5DB' />
-						<Tooltip />
-						<Legend />
+						<CartesianGrid strokeDasharray='3 3' stroke='rgba(255,255,255,0.08)' />
+						<XAxis dataKey='date' stroke='#94a3b8' fontSize={12} tickLine={false} />
+						<YAxis yAxisId='left' stroke='#94a3b8' fontSize={12} tickLine={false} />
+						<YAxis yAxisId='right' orientation='right' stroke='#94a3b8' fontSize={12} tickLine={false} />
+						<Tooltip
+							contentStyle={{
+								backgroundColor: "rgba(15, 17, 26, 0.9)",
+								borderRadius: "16px",
+								border: "1px solid rgba(255, 255, 255, 0.15)",
+								boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.5)",
+								color: "#fff",
+							}}
+						/>
+						<Legend wrapperStyle={{ paddingTop: "12px" }} />
 						<Line
 							yAxisId='left'
 							type='monotone'
 							dataKey='sales'
-							stroke='#10B981'
-							activeDot={{ r: 8 }}
+							stroke='#8b5cf6'
+							strokeWidth={2.5}
+							dot={{ fill: "#8b5cf6", r: 4 }}
+							activeDot={{ r: 7 }}
 							name='Sales'
 						/>
 						<Line
 							yAxisId='right'
 							type='monotone'
 							dataKey='revenue'
-							stroke='#3B82F6'
-							activeDot={{ r: 8 }}
-							name='Revenue'
+							stroke='#38bdf8'
+							strokeWidth={2.5}
+							dot={{ fill: "#38bdf8", r: 4 }}
+							activeDot={{ r: 7 }}
+							name='Revenue ($)'
 						/>
 					</LineChart>
 				</ResponsiveContainer>
@@ -100,22 +122,24 @@ const AnalyticsTab = () => {
 };
 export default AnalyticsTab;
 
-const AnalyticsCard = ({ title, value, icon: Icon, color }) => (
+const AnalyticsCard = ({ title, value, icon: Icon, badgeColor, gradient }) => (
 	<motion.div
-		className={`bg-gray-800 rounded-lg p-6 shadow-lg overflow-hidden relative ${color}`}
+		className={`glass-panel rounded-3xl p-6 shadow-xl relative overflow-hidden border border-white/10 ${gradient}`}
 		initial={{ opacity: 0, y: 20 }}
 		animate={{ opacity: 1, y: 0 }}
 		transition={{ duration: 0.5 }}
 	>
-		<div className='flex justify-between items-center'>
+		<div className='flex justify-between items-start'>
 			<div className='z-10'>
-				<p className='text-emerald-300 text-sm mb-1 font-semibold'>{title}</p>
-				<h3 className='text-white text-3xl font-bold'>{value}</h3>
+				<p className={`text-xs uppercase tracking-wider mb-2 font-bold ${badgeColor}`}>{title}</p>
+				<h3 className='text-white text-3xl font-black tracking-tight'>{value}</h3>
+			</div>
+			<div className={`p-3 rounded-2xl bg-white/5 border border-white/10 z-10 ${badgeColor}`}>
+				<Icon className='h-6 w-6' />
 			</div>
 		</div>
-		<div className='absolute inset-0 bg-linear-to-br from-emerald-600 to-emerald-900 opacity-30' />
-		<div className='absolute -bottom-4 -right-4 text-emerald-800 opacity-50'>
-			<Icon className='h-32 w-32' />
+		<div className='absolute -bottom-6 -right-6 opacity-10 pointer-events-none'>
+			<Icon className='h-32 w-32 text-white' />
 		</div>
 	</motion.div>
 );

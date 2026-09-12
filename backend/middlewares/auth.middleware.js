@@ -38,6 +38,6 @@ export const adminRoute = (req, res, next) => {
     if (req.user && req.user.role === "admin") {
         next();
     } else {
-        throw new ApiError(403, "Access denied - Admin only");
+        return next(new ApiError(403, "Access denied - Admin only"));
     }
 };

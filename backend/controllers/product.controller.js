@@ -19,22 +19,32 @@ export const getAllProducts = asyncHandler(async (req, res) => {
 
 export const getFeaturedProducts = asyncHandler(async (req, res) => {
     // 1. Try to get from Redis cache
-    let featuredProducts = await redis.get("featured_products");
-
-    if (featuredProducts) {
-        return res
-        .status(200)
-        .json(
-            new ApiResponse(200, JSON.parse(featuredProducts), "Featured products fetched successfully!")
-        )
+    try {
+        if (redis) {
+            const cached = await redis.get("featured_products");
+            if (cached) {
+                return res
+                    .status(200)
+                    .json(
+                        new ApiResponse(200, JSON.parse(cached), "Featured products fetched successfully!")
+                    );
+            }
+        }
+    } catch (redisError) {
+        console.warn("Redis get error (falling back to DB):", redisError.message);
     }
 
-    // 2. Cache miss -> Fetch from MongoDB
-    // .lean() returns plain JavaScript objects instead of mongodb document, improving query performance
-    featuredProducts = await Product.find({ isFeatured: true }).lean();
+    // 2. Cache miss or Redis unavailable -> Fetch from MongoDB
+    const featuredProducts = await Product.find({ isFeatured: true }).lean();
 
     // 3. Store into Redis cache for future requests
-    await redis.set("featured_products", JSON.stringify(featuredProducts));
+    try {
+        if (redis) {
+            await redis.set("featured_products", JSON.stringify(featuredProducts));
+        }
+    } catch (redisError) {
+        console.warn("Redis set error:", redisError.message);
+    }
 
     return res
     .status(200)
@@ -168,8 +178,10 @@ async function updateFeaturedProductsCache() {
     try {
         const featuredProducts = await Product.find({ isFeatured: true }).lean();
 
-        await redis.set("featured_products", JSON.stringify(featuredProducts));
+        if (redis) {
+            await redis.set("featured_products", JSON.stringify(featuredProducts));
+        }
     } catch (error) {
-        console.log("Error in update cache function!");
+        console.log("Error in update cache function:", error?.message);
     }
 };

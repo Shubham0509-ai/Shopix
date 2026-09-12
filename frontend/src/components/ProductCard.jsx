@@ -6,6 +6,9 @@ import { useCartStore } from "../stores/useCartStore";
 const ProductCard = ({ product }) => {
 	const { user } = useUserStore();
 	const { addToCart } = useCartStore();
+
+	if (!product) return null;
+
 	const handleAddToCart = () => {
 		if (!user) {
 			toast.error("Please login to add products to cart", { id: "login" });
@@ -17,27 +20,49 @@ const ProductCard = ({ product }) => {
 	};
 
 	return (
-		<div className='flex w-full relative flex-col overflow-hidden rounded-lg border border-gray-700 shadow-lg'>
-			<div className='relative mx-3 mt-3 flex h-60 overflow-hidden rounded-xl'>
-				<img className='object-cover w-full' src={product.image} alt='product image' />
-				<div className='absolute inset-0 bg-black bg-opacity-20' />
+		<div className='flex w-full relative flex-col overflow-hidden rounded-2xl glass-panel group hover:border-violet-500/40 hover:-translate-y-1.5 transition-all duration-300 shadow-xl shadow-black/30'>
+			<div className='relative aspect-square overflow-hidden bg-[#121524]'>
+				<img
+					className='object-cover w-full h-full transition-transform duration-700 ease-out group-hover:scale-105'
+					src={product.image}
+					alt={product.name}
+					onError={(e) => {
+						e.currentTarget.onerror = null;
+						e.currentTarget.src = "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80";
+					}}
+				/>
+				<div className='absolute inset-0 bg-gradient-to-t from-[#08090f]/70 via-transparent to-transparent opacity-60' />
+				{product.category && (
+					<span className='absolute top-3 left-3 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-wider uppercase bg-black/50 backdrop-blur-md text-violet-300 border border-white/10'>
+						{product.category}
+					</span>
+				)}
 			</div>
 
-			<div className='mt-4 px-5 pb-5'>
-				<h5 className='text-xl font-semibold tracking-tight text-white'>{product.name}</h5>
-				<div className='mt-2 mb-5 flex items-center justify-between'>
-					<p>
-						<span className='text-3xl font-bold text-emerald-400'>${product.price}</span>
-					</p>
+			<div className='p-5 flex flex-col flex-grow justify-between'>
+				<div>
+					<h4 className='text-lg font-bold tracking-tight text-white group-hover:text-violet-300 transition-colors line-clamp-1'>{product.name}</h4>
+					{product.description && (
+						<p className='text-slate-400 text-xs mt-1.5 line-clamp-2 leading-relaxed'>{product.description}</p>
+					)}
 				</div>
-				<button
-					className='flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-center text-sm font-medium
-					 text-white hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-300'
-					onClick={handleAddToCart}
-				>
-					<ShoppingCart size={22} className='mr-2' />
-					Add to cart
-				</button>
+
+				<div className='mt-4 pt-4 border-t border-white/5 flex items-center justify-between gap-3'>
+					<div>
+						<span className='text-xs text-slate-400 block'>Price</span>
+						<span className='text-2xl font-black text-white'>
+							${typeof product.price === "number" ? product.price.toFixed(2) : product.price}
+						</span>
+					</div>
+
+					<button
+						className='gradient-btn text-white px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-1.5 cursor-pointer'
+						onClick={handleAddToCart}
+					>
+						<ShoppingCart size={17} />
+						<span>Add</span>
+					</button>
+				</div>
 			</div>
 		</div>
 	);

@@ -1,45 +1,108 @@
-import toast from "react-hot-toast";
-import { ShoppingCart } from "lucide-react";
-import { useUserStore } from "../stores/useUserStore";
-import { useCartStore } from "../stores/useCartStore";
+import { motion } from "framer-motion";
+import { Trash, Star } from "lucide-react";
+import { useProductStore } from "../stores/useProductStore";
 
-const ProductCard = ({ product }) => {
-	const { user } = useUserStore();
-	const { addToCart } = useCartStore();
-	const handleAddToCart = () => {
-		if (!user) {
-			toast.error("Please login to add products to cart", { id: "login" });
-			return;
-		} else {
-			// add to cart
-			addToCart(product);
-		}
-	};
+const ProductsList = () => {
+	const { deleteProduct, toggleFeaturedProduct, products } = useProductStore();
+	const productList = Array.isArray(products) ? products : [];
 
 	return (
-		<div className='flex w-full relative flex-col overflow-hidden rounded-lg border border-gray-700 shadow-lg'>
-			<div className='relative mx-3 mt-3 flex h-60 overflow-hidden rounded-xl'>
-				<img className='object-cover w-full' src={product.image} alt='product image' />
-				<div className='absolute inset-0 bg-black bg-opacity-20' />
-			</div>
+		<motion.div
+			className='glass-panel rounded-3xl overflow-hidden max-w-5xl mx-auto shadow-2xl shadow-black/40 border border-white/10'
+			initial={{ opacity: 0, y: 20 }}
+			animate={{ opacity: 1, y: 0 }}
+			transition={{ duration: 0.8 }}
+		>
+			<div className='overflow-x-auto'>
+				<table className='min-w-full divide-y divide-white/5 text-left'>
+					<thead className='bg-white/5 border-b border-white/10'>
+						<tr>
+							<th scope='col' className='px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider'>
+								Product
+							</th>
+							<th scope='col' className='px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider'>
+								Price
+							</th>
+							<th scope='col' className='px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider'>
+								Category
+							</th>
+							<th scope='col' className='px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider'>
+								Featured
+							</th>
+							<th scope='col' className='px-6 py-4 text-xs font-bold text-slate-300 uppercase tracking-wider'>
+								Actions
+							</th>
+						</tr>
+					</thead>
 
-			<div className='mt-4 px-5 pb-5'>
-				<h5 className='text-xl font-semibold tracking-tight text-white'>{product.name}</h5>
-				<div className='mt-2 mb-5 flex items-center justify-between'>
-					<p>
-						<span className='text-3xl font-bold text-emerald-400'>${product.price}</span>
-					</p>
-				</div>
-				<button
-					className='flex items-center justify-center rounded-lg bg-emerald-600 px-5 py-2.5 text-center text-sm font-medium
-					 text-white hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-300'
-					onClick={handleAddToCart}
-				>
-					<ShoppingCart size={22} className='mr-2' />
-					Add to cart
-				</button>
+					<tbody className='divide-y divide-white/5'>
+						{productList.length === 0 ? (
+							<tr>
+								<td colSpan='5' className='px-6 py-12 text-center text-slate-400 text-sm'>
+									No products in catalog. Create one using the tab above.
+								</td>
+							</tr>
+						) : (
+							productList.map((product) => (
+								<tr key={product._id} className='hover:bg-white/5 transition-colors'>
+									<td className='px-6 py-4 whitespace-nowrap'>
+										<div className='flex items-center gap-3'>
+											<div className='h-11 w-11 shrink-0 rounded-xl overflow-hidden border border-white/10 bg-slate-900'>
+												<img
+													className='h-full w-full object-cover'
+													src={product.image}
+													alt={product.name}
+													onError={(e) => {
+														e.currentTarget.onerror = null;
+														e.currentTarget.src = "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=800&q=80";
+													}}
+												/>
+											</div>
+											<div>
+												<div className='text-sm font-bold text-white'>{product.name}</div>
+											</div>
+										</div>
+									</td>
+									<td className='px-6 py-4 whitespace-nowrap'>
+										<div className='text-sm font-semibold text-white'>
+											${typeof product.price === "number" ? product.price.toFixed(2) : product.price}
+										</div>
+									</td>
+									<td className='px-6 py-4 whitespace-nowrap'>
+										<span className='px-2.5 py-1 inline-flex text-xs font-semibold rounded-full bg-violet-500/15 text-violet-300 border border-violet-500/30 capitalize'>
+											{product.category}
+										</span>
+									</td>
+									<td className='px-6 py-4 whitespace-nowrap'>
+										<button
+											onClick={() => toggleFeaturedProduct(product._id)}
+											className={`p-2 rounded-xl border border-white/5 hover:border-white/20 transition-all cursor-pointer ${
+												product.isFeatured
+													? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+													: "text-slate-500 hover:text-amber-300 bg-white/5"
+											}`}
+											title={product.isFeatured ? "Remove from featured" : "Set as featured"}
+										>
+											<Star className={`h-4 w-4 ${product.isFeatured ? "fill-amber-400" : ""}`} />
+										</button>
+									</td>
+									<td className='px-6 py-4 whitespace-nowrap text-sm font-medium'>
+										<button
+											onClick={() => deleteProduct(product._id)}
+											className='text-rose-400 hover:text-rose-300 p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 transition-all cursor-pointer'
+											title='Delete product'
+										>
+											<Trash className='h-4 w-4' />
+										</button>
+									</td>
+								</tr>
+							))
+						)}
+					</tbody>
+				</table>
 			</div>
-		</div>
+		</motion.div>
 	);
 };
-export default ProductCard;
+
+export default ProductsList;

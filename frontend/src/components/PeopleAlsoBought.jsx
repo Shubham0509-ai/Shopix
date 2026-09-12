@@ -12,9 +12,11 @@ const PeopleAlsoBought = () => {
 		const fetchRecommendations = async () => {
 			try {
 				const res = await axios.get("/products/recommendations");
-				setRecommendations(res.data);
+				const data = res.data?.data || res.data || [];
+				setRecommendations(Array.isArray(data) ? data : []);
 			} catch (error) {
-				toast.error(error.response.data.message || "An error occurred while fetching recommendations");
+				const message = error.response?.data?.message || "An error occurred while fetching recommendations";
+				toast.error(message, { id: message });
 			} finally {
 				setIsLoading(false);
 			}
@@ -26,10 +28,12 @@ const PeopleAlsoBought = () => {
 	if (isLoading) return <LoadingSpinner />;
 
 	return (
-		<div className='mt-8'>
-			<h3 className='text-2xl font-semibold text-emerald-400'>People also bought</h3>
-			<div className='mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg: grid-col-3'>
-				{recommendations.map((product) => (
+		<div className='mt-10 pt-8 border-t border-white/10'>
+			<h3 className='text-2xl font-black text-white tracking-tight'>
+				People Also <span className='gradient-text'>Bought</span>
+			</h3>
+			<div className='mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3'>
+				{Array.isArray(recommendations) && recommendations.map((product) => (
 					<ProductCard key={product._id} product={product} />
 				))}
 			</div>

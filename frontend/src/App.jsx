@@ -1,10 +1,13 @@
 import { useState } from 'react'
+import { Outlet } from 'react-router'
 
 function App() {
   const [count, setCount] = useState(0)
 
   return (
-    <div className='text-red-500 text-5xl'>Hello World!</div>
+    <div>
+      <Outlet />
+    </div>
   )
 }
 

@@ -1,9 +1,12 @@
 import express from "express";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
+import path from "path";
 import connectDB from "./lib/db.js";
 
 dotenv.config();
+
+const __dirname = path.resolve();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -47,6 +50,15 @@ app.use("/api/coupons", couponRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/analytics", analyticsRoutes);
+
+// Serve frontend static assets in production
+if (process.env.NODE_ENV === "production") {
+    app.use(express.static(path.join(__dirname, "frontend", "dist")));
+
+    app.get("/{*splat}", (req, res) => {
+        res.sendFile(path.resolve(__dirname, "frontend", "dist", "index.html"));
+    });
+}
 
 // Centralized JSON error handling middleware
 app.use((err, req, res, next) => {
